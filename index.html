@@ -69,31 +69,31 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
       }
     }
 
-    function reverseGeocode(lat, lon) {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
-      fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Tracker Script)'
-        }
-      })
-        .then(res => res.json())
-        .then(data => {
-          const address = data.address || {};
-          city = address.city || address.town || address.village || address.hamlet || "";
-          country = address.country || "";
-          const countryCode = address.country_code ? address.country_code.toUpperCase() : "";
-          flagEmoji = countryCode
-            ? String.fromCodePoint(...[...countryCode].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
-            : "";
-          checkIfReady();
-        })
-        .catch(() => {
-          city = "";
-          country = "";
-          flagEmoji = "";
-          checkIfReady();
-        });
+function reverseGeocode(lat, lon) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+  fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Tracker Script)'
     }
+  })
+    .then(res => res.json())
+    .then(data => {
+      const address = data.address || {};
+      city = address.city || address.town || address.village || address.hamlet || address.suburb || address.county || "";
+      country = address.country || "";
+      const countryCode = address.country_code ? address.country_code.toUpperCase() : "";
+      flagEmoji = countryCode
+        ? String.fromCodePoint(...[...countryCode].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+        : "";
+      checkIfReady();
+    })
+    .catch(() => {
+      city = "";
+      country = "";
+      flagEmoji = "";
+      checkIfReady();
+    });
+}
 
     function getLocation() {
       if ("geolocation" in navigator) {
